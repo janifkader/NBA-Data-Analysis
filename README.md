@@ -52,9 +52,10 @@ allDf = allDf.drop(columns=["TEAM_ID","TEAM_NAME","GP","W","L","MIN","GP_RANK","
 
 To preform our analysis, we must:
 
-1. Find the correlation between each of the four factors and winning percentage for NBA Teams
-2. We must perform this analysis across multiple seasons and see which of the factors is most involved in winning
-3. Look at the overall winner and see how the correlation varies between eras
+1. Find the correlation between each of the four factors and winning percentage for NBA Teams.
+2. We must perform this analysis across multiple seasons and see which of the factors is most involved in winning.
+3. Perform a regression analysis to see the relationship between our factors and winning.
+4. Look at the overall winner and see how the correlation varies between eras.
 
 To preform this analysis we will find the correlation between the four factors an win percentage and plot it on a correlation heat map. The code can be seen below:
 
@@ -96,6 +97,61 @@ When looking at the heatmap, the first column/row is what's the most important t
 
 The game of basketball has evolved tremendously over its long history and that evolution is evident in this data. The correlation between eFG% and WIN% has decreased as the correlation between everything else and WIN% has increased. This happens as teams are more willing to take low-percentage three-point shots rather than the heavy reliance on the two-point game of the past. Something interesting to note is that in the most recent season, 2023-24, OREB% has a positive correlation with WIN%. This could be due to more teams converting on second chance possessions after offensive rebounds, but more analysis would need to be conducted before coming to that conclusion.
 
+### Regression Analysis
+
+To attack this problem in another way, we can perform a simple Multiple Regression Analysis to see the relationship between our independent variables (EFG_PCT, FTA_RATE, TM_TOV_PCT, OREB_PCT) and our dependent variable (W_PCT). We do this by optimizing the parameters or coefficients of the model. The variable with the coefficient of the largest magnitude has the most impact on winning, the sign of the coefficient determines whether or not that impact is positive or negative.
+
+#### Data Preprocessing
+
+For multiple regression analysis, each of our inputs and outputs should be in the following format:
+
+x = [EFG_PCT, FTA_RATE, TM_TOV_PCT, OREB_PCT, 1], y = [W_PCT]
+
+The coefficients should be in the following format:
+
+w = [c_1, c_2, c_3, c_4, b]
+
+The whole of our data is represented as such:
+
+X = [x_1, x_1, x_3, ... , x_n], Y = [y_1, y_2, y_3, ... , y_n], W = [w_1, w_2, w_3, ... , w_n]
+
+The code used to perform this preproccessing can be seen below:
+
+```python
+model = MultipleRegression()
+df = pd.read_csv("allfourfactors.csv")
+train_X = df[["EFG_PCT", "FTA_RATE", "TM_TOV_PCT", "OREB_PCT"]]
+train_X = np.concatenate((train_X.to_numpy(), np.ones((89, 1), dtype=np.float32)), axis=1)
+train_Y = df["W_PCT"]
+train_Y = train_Y.to_numpy().reshape((89, 1))
+```
+
+To determine our optimized parameters, we use the formula derived from the gradient of the energy function, W = (X^T * X)^-1 * X^T * Y, Our regression model can be seen below:
+
+```python
+class MultipleRegression:
+
+    def __init__(self):
+        self.parameters = np.ones((1, 5), dtype=np.float32)
+
+    def fit(self, train_X, train_Y):
+        self.parameters = np.matmul(np.matmul(np.linalg.inv(np.matmul(train_X.T, train_X)), train_X.T), train_Y)
+```
+
+### Results
+
+We can see the final parameters with the code below:
+
+```python
+model.fit(train_X, train_Y)
+print(model.parameters)
+```
+From which, we recieve the following output:
+
+EFG_PCT: 4.23839586, FTA_RATE: 2.80697118, TM_TOV_PCT: -3.89116642, OREB_PCT: -1.85822008
+
+The regression analysis confirms our previous findings. Shooting, Turnovers, Free Throws and Rebounding in that order have the most impact on winning. This analysis further confirms our observation of the negative impact of offensive rebounding.
+ 
 ### Conclusion
 
-Based on our heatmaps, it is evident that eFG% is the most correlated with winning in all of our individual seasons, and in the overall picture. This tells us that Shooting is by far the most important factor to winning. This is followed by Turnovers, Free Throws and Rebounding in that order. This is consistent throughout all of the eras we've analyzed, so despite the amount that Basketball has changed and grown as a sport, the fundamental principles are constant.
+Based on our heatmaps and regression analyais, it is evident that eFG% is the most correlated with winning in all of our individual seasons, and in the overall picture. This tells us that Shooting is by far the most important factor to winning. This is followed by Turnovers, Free Throws and Rebounding in that order. This is consistent throughout all of the eras we've analyzed, so despite the amount that Basketball has changed and grown as a sport, the fundamental principles are constant.
